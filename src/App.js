@@ -1,26 +1,76 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState, useEffect } from "react";
+import { connect } from "react-redux";
+import { bindActionCreators } from "redux";
+import "./App.css";
+import Header from "./components/Header";
+import Movie from "./components/Movie";
+import Search from "./components/Search";
+import apiService from "./query/apiService";
+import { spinerShowAction, spinerHideAction } from "./redux/actions";
 
-function App() {
+const App = ({
+  showSpiner,
+  dispatch,
+  showSpinerHandler,
+  hideSpinerHandler,
+}) => {
+  const [movies, setMovies] = useState([]);
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  useEffect(() => {
+    apiService.getMovie().then((data) => {
+      setMovies(data.Search);
+
+      hideSpinerHandler();
+    });
+  }, []);
+
+  const search = (searchValue) => {
+    showSpinerHandler();
+    setErrorMessage(null);
+    apiService.getMovie(searchValue).then((data) => {
+      if (data.Response === "True") {
+        setMovies(data.Search);
+
+        hideSpinerHandler();
+      }
+      setErrorMessage(data.Error);
+
+      hideSpinerHandler();
+    });
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app">
+      <Header text="Поиск фильмов (только английские названия)" />
+      <Search search={search} />
+      <div className="app__wrap">
+        {showSpiner && !errorMessage ? (
+          <div
+            className="spinner-border text-primary app__spiner"
+            role="status"
+          >
+            <span className="sr-only">Loading...</span>
+          </div>
+        ) : errorMessage ? (
+          <div className="app__error-message">{errorMessage}</div>
+        ) : (
+          movies.map((movie, index) => (
+            <Movie key={`${movie.imdbID}`} movie={movie} />
+          ))
+        )}
+      </div>
     </div>
   );
-}
+};
+const mapStateToprops = (state) => {
+  return { showSpiner: state.showSpiner.showSpiner };
+};
+const mapDispatchToProps = (dispatch) => {
+  return {
+    showSpinerHandler: bindActionCreators(spinerShowAction, dispatch),
+    hideSpinerHandler: bindActionCreators(spinerHideAction, dispatch),
+  };
+};
 
-export default App;
+export default connect(mapStateToprops, mapDispatchToProps)(App);
